@@ -12,7 +12,7 @@ defmodule Employee do
     property :level, :string, enum: ["L1", "L2", "L3"]
     property :experience, [:number, :string]
     property :is_manager, :boolean, default: false
-    property :known_technologies, {:array, :string}
+    property :known_technologies, {:array, :string}, nullable: true
     additional_properties :string
   end
 end
@@ -25,25 +25,21 @@ Other properties in the `Employee` schema:
 * `:level` - it has type `:string` and can be one of `["L1", "L2", "L3"]`
 * `:experience` - its type is a union of `:number` and `:string`
 * `:is_manager` - it has type `:boolean` and is `false` by default
-* `:known_technologies` - its type is an array with strings
+* `:known_technologies` - its type is an array with strings or `nil`
 * `additional_properties` - it can have more properties having type `:string`
 
 All properties are required and not nullable by default.
 
-## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `open_api_spex_generator` to your list of dependencies in `mix.exs`:
+Also, the following typespec will be created:
 
 ```elixir
-def deps do
-  [
-    {:open_api_spex_generator, "~> 0.1.0"}
-  ]
-end
+@type t :: %{
+  level: String.t(),
+  experience: number() | String.t(),
+  is_manager: boolean(),
+  known_technologies: [:String.t()] | nil
+  ... # and all properties from Person
+}
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/open_api_spex_generator>.
-
+For more information refer to `JungleSpec` module docs.

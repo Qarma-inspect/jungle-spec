@@ -11,11 +11,11 @@ defmodule JungleSpec.TypespecGenerator do
 
       @type_ast properties_types(schema, references_to_modules, opts)
 
-      (if Keyword.get(opts, :struct?, true) do
+      if Keyword.get(opts, :struct?, true) do
         @type t :: unquote(@type_ast |> create_map_type() |> module_struct(module) |> maybe_nullable(schema))
       else
         @type t :: unquote(@type_ast |> create_map_type() |> maybe_nullable(schema))
-      end)
+      end
 
       # if the module is extended, this helper function will make getting properties' types easier
       def __jungle_type__(), do: @type_ast
@@ -38,7 +38,7 @@ defmodule JungleSpec.TypespecGenerator do
       if Keyword.has_key?(opts, :extends) do
         extended_module = Keyword.get(opts, :extends)
 
-        object_properties = Map.drop(schema.properties,  Map.keys(extended_module.schema().properties))
+        object_properties = Map.drop(schema.properties, Map.keys(extended_module.schema().properties))
         extended_properties_asts = get_extended_properties_ast(extended_module)
 
         {object_properties, extended_properties_asts}
@@ -97,7 +97,8 @@ defmodule JungleSpec.TypespecGenerator do
       end)
       |> Enum.reject(fn schema -> schema == nil end)
 
-    inner_schema_nullable = Enum.any?(schemas, fn
+    inner_schema_nullable =
+      Enum.any?(schemas, fn
         %Schema{nullable: nullable} -> nullable
         _schema -> false
       end)

@@ -4,7 +4,7 @@ defmodule JungleSpec.TypespecGeneratorTest do
   alias OpenApiSpex.Schema
 
   import JungleSpec.TypespecGenerator
-  
+
   defmodule ExampleModule do
     use JungleSpec
 

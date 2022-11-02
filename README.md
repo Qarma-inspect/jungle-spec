@@ -1,4 +1,4 @@
-# OpenApiSpexGenerator
+# JungleSpec
 
 A library providing simplified and less verbose way of definining OpenApiSpex types.
 

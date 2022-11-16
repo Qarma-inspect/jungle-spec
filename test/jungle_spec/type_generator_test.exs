@@ -217,6 +217,29 @@ defmodule JungleSpec.TypespecGeneratorTest do
       assert generate_type(schema, [], []) == type
     end
 
+    test "extended schema" do
+      schema = %Schema{
+        title: "Example",
+        type: :object,
+        nullable: false,
+        properties: %{
+          int: %Schema{type: :integer, nullable: false}
+        }
+      }
+
+      type =
+        quote do
+          %{
+            int: integer(),
+            name: String.t()
+          }
+        end
+
+      opts = [{:extends, ExampleModule}]
+
+      assert generate_type(schema, [], opts) == type
+    end
+
     test "additional propeties present" do
       reference = "#/components/schemas/" <> ExampleModule.schema().title
 

@@ -217,6 +217,38 @@ defmodule JungleSpec.TypespecGeneratorTest do
       assert generate_type(schema, [], []) == type
     end
 
+    test "additional propeties present" do
+      reference = "#/components/schemas/" <> ExampleModule.schema().title
+
+      schema = %Schema{
+        title: "Example",
+        type: :object,
+        nullable: false,
+        properties: %{
+          string: %Schema{type: :string, nullable: false}
+        },
+        additionalProperties: %Schema{
+          nullable: true,
+          type: :array,
+          items: %Schema{
+            nullable: false,
+            oneOf: [%OpenApiSpex.Reference{"$ref": reference}, %Schema{type: :integer, nullable: false}]
+          }
+        }
+      }
+
+      type =
+        quote do
+          %{
+            String.t() => [JungleSpec.TypespecGeneratorTest.ExampleModule.t() | integer()] | nil,
+            string: String.t()
+          }
+        end
+
+      references_to_modules = [{reference, JungleSpec.TypespecGeneratorTest.ExampleModule}]
+      assert generate_type(schema, references_to_modules, []) == type
+    end
+
     defp generate_type(schema, references_to_modules, opts, module \\ nil)
 
     defp generate_type(schema, references_to_modules, opts, nil) do

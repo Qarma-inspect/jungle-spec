@@ -1,11 +1,11 @@
-defmodule UniversityOld do
+defmodule UniversitySpex do
   alias OpenApiSpex.Schema
 
   require OpenApiSpex
 
   OpenApiSpex.schema(
     %Schema{
-      title: "UniversityOld",
+      title: "UniversitySpex",
       description: "A university",
       type: :object,
       nullable: false,
@@ -29,7 +29,7 @@ defmodule UniversityOld do
         nullable: true,
         items: %Schema{
           nullable: false,
-          oneOf: [%OpenApiSpex.Reference{"$ref": "#/components/schemas/IDNew"}, %Schema{type: :integer, nullable: false}]
+          oneOf: [%OpenApiSpex.Reference{"$ref": "#/components/schemas/IDJungle"}, %Schema{type: :integer, nullable: false}]
         }
       }
     },

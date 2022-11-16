@@ -5,6 +5,6 @@ defmodule UniversityNew do
     property :name, :string
     property :is_technical, :boolean, default: false
     property :programs, {:array, :string}, description: "A list of programs"
-    additional_properties :string
+    additional_properties {:array, [IDNew, :integer]}, nullable: true
   end
 end

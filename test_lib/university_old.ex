@@ -25,8 +25,12 @@ defmodule UniversityOld do
         }
       },
       additionalProperties: %Schema{
-        nullable: false,
-        type: :string
+        type: :array,
+        nullable: true,
+        items: %Schema{
+          nullable: false,
+          oneOf: [%OpenApiSpex.Reference{"$ref": "#/components/schemas/IDNew"}, %Schema{type: :integer, nullable: false}]
+        }
       }
     },
     struct?: false

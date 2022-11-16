@@ -13,7 +13,7 @@ defmodule Employee do
     property :experience, [:number, :string]
     property :is_manager, :boolean, default: false
     property :known_technologies, {:array, :string}, nullable: true
-    additional_properties :string
+    additional_properties :integer
   end
 end
 ```
@@ -26,7 +26,7 @@ Other properties in the `Employee` schema:
 * `:experience` - its type is a union of `:number` and `:string`
 * `:is_manager` - it has type `:boolean` and is `false` by default
 * `:known_technologies` - its type is an array with strings or `nil`
-* `additional_properties` - it can have more properties having type `:string`
+* `additional_properties` - it can have more properties having type `:integer`
 
 All properties are required and not nullable by default.
 
@@ -34,6 +34,9 @@ Also, the following typespec will be created:
 
 ```elixir
 @type t :: %{
+  # additional properties
+  String.t() => integer(),
+  # properties
   level: String.t(),
   experience: number() | String.t(),
   is_manager: boolean(),

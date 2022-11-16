@@ -13,7 +13,8 @@ defmodule PersonOld do
         :name
       ],
       properties: %{
-        id: %OpenApiSpex.Reference{"$ref": "#/components/schemas/IDOld"},
+        id: %OpenApiSpex.Reference{"$ref": "#/components/schemas/IDNew"},
+        additional_id: %Schema{oneOf: [%OpenApiSpex.Reference{"$ref": "#/components/schemas/IDNew"}], nullable: true},
         name: %Schema{type: :string, nullable: false},
         age: %Schema{type: :integer, nullable: false},
         height: %Schema{type: :number, nullable: false}

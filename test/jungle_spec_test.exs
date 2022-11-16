@@ -10,9 +10,7 @@ defmodule JungleSpecTest do
     student_new = StudentNew.schema()
     student_old = StudentOld.schema()
 
-    updated_properties = %{student_old.properties | id: %OpenApiSpex.Reference{"$ref": "#/components/schemas/IDNew"}}
-
-    assert student_new == %{student_old | title: "StudentNew", properties: updated_properties, "x-struct": StudentNew}
+    assert student_new == %{student_old | title: "StudentNew", properties: student_old.properties, "x-struct": StudentNew}
   end
 
   test "Old and new Type schemas are the same" do

@@ -67,8 +67,6 @@ defmodule JungleSpec do
     * `:struct?` - a boolean value telling OpenApiSpex if it should create a struct out of the
       object. It will also add the struct to the typespec if set to `true`
   """
-  defmacro open_api_object(title, opts \\ [], block \\ [{:do, nil}])
-
   defmacro open_api_object(title, opts, do: block) do
     quote do
       Module.register_attribute(__MODULE__, :properties, accumulate: true)
@@ -88,6 +86,24 @@ defmodule JungleSpec do
       define_object_type(__MODULE__, object_schema, @references_to_modules, unquote(opts))
 
       OpenApiSpex.schema(object_schema, struct?: false, derive?: false)
+    end
+  end
+
+  defmacro open_api_object(title, do: block) do
+    quote do
+      open_api_object(unquote(title), [], do: unquote(block))
+    end
+  end
+
+  defmacro open_api_object(title, opts) do
+    quote do
+      open_api_object(unquote(title), unquote(opts), do: nil)
+    end
+  end
+
+  defmacro open_api_object(title) do
+    quote do
+      open_api_object(unquote(title), [], do: nil)
     end
   end
 
@@ -313,18 +329,33 @@ defmodule JungleSpec do
 
     Code.ensure_compiled!(property_module)
 
-    if Keyword.get(opts, :inline, false) do
-      property_module
-    else
-      reference =
-        if module == property_module do
-          "#/components/schemas/" <> title
-        else
-          "#/components/schemas/" <> property_module.schema().title
-        end
+    module_schema =
+      if Keyword.get(opts, :inline, false) do
+        property_module
+      else
+        reference =
+          if module == property_module do
+            "#/components/schemas/" <> title
+          else
+            "#/components/schemas/" <> property_module.schema().title
+          end
 
-      Module.put_attribute(module, :references_to_modules, {reference, property_module})
-      %OpenApiSpex.Reference{"$ref": reference}
+        Module.put_attribute(module, :references_to_modules, {reference, property_module})
+        %OpenApiSpex.Reference{"$ref": reference}
+      end
+
+    nullable = Keyword.get(opts, :nullable, false)
+
+    cond do
+      Keyword.has_key?(opts, :default) ->
+        default = Keyword.get(opts, :default)
+        %Schema{oneOf: [module_schema], default: default, nullable: nullable}
+
+      nullable ->
+        %Schema{oneOf: [module_schema], nullable: nullable}
+
+      true ->
+        module_schema
     end
   end
 

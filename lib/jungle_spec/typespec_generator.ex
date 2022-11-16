@@ -33,7 +33,7 @@ defmodule JungleSpec.TypespecGenerator do
   def properties_types(schema, references_to_modules, opts) do
     references_to_modules = Map.new(references_to_modules)
 
-    # since extended object is not adding anything to `references_to_modules`, we need to use it's already created type
+    # since extended object cannot add anything to `references_to_modules`, we need to use its already created type
     {object_properties, extended_properties_asts} =
       if Keyword.has_key?(opts, :extends) do
         extended_module = Keyword.get(opts, :extends)

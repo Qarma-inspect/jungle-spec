@@ -229,7 +229,7 @@ defmodule JungleSpec do
         title: title,
         type: :object
       }
-      |> maybe_add_additional_properties(additional_properties)
+      |> maybe_add_additional_properties(module, title, additional_properties)
       |> maybe_add_opts([:description, :example], opts)
       |> maybe_add_xstruct(module, opts)
       |> maybe_extend_object(opts)
@@ -418,14 +418,13 @@ defmodule JungleSpec do
     |> Enum.reverse()
   end
 
-  defp maybe_add_additional_properties(schema_map, {type, opts}) do
-    Map.put(schema_map, :additionalProperties, %Schema{
-      type: type,
-      nullable: Keyword.get(opts, :nullable, false)
-    })
+  defp maybe_add_additional_properties(schema_map, module, title, {type, opts}) do
+    additional_properties_schema = prepare_property_schema(module, title, :additional_properties, type, opts)
+
+    Map.put(schema_map, :additionalProperties, additional_properties_schema)
   end
 
-  defp maybe_add_additional_properties(schema_map, nil) do
+  defp maybe_add_additional_properties(schema_map, _module, _title, nil) do
     schema_map
   end
 

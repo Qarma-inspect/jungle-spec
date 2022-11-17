@@ -39,7 +39,7 @@ defmodule JungleSpec.TypespecGenerator do
         extended_module = Keyword.get(opts, :extends)
 
         object_properties = Map.drop(schema.properties, Map.keys(extended_module.schema().properties))
-        extended_properties_asts = get_extended_properties_ast(extended_module)
+        extended_properties_asts = get_extended_properties_ast!(extended_module)
 
         {object_properties, extended_properties_asts}
       else
@@ -54,7 +54,22 @@ defmodule JungleSpec.TypespecGenerator do
         |> then(&{name, &1})
       end)
 
-    properties_asts ++ extended_properties_asts
+    additional_properties_ast(schema, references_to_modules) ++ properties_asts ++ extended_properties_asts
+  end
+
+  defp additional_properties_ast(schema, references_to_modules) do
+    if schema.additionalProperties do
+      key_type = to_type_ast(%Schema{type: :string}, references_to_modules)
+
+      value_type =
+        schema.additionalProperties
+        |> maybe_extend_by_nil()
+        |> to_type_ast(references_to_modules)
+
+      [{key_type, value_type}]
+    else
+      []
+    end
   end
 
   def create_map_type(properties_types) do
@@ -81,7 +96,7 @@ defmodule JungleSpec.TypespecGenerator do
     |> to_type_ast(references_to_modules)
   end
 
-  defp get_extended_properties_ast(extended_module) do
+  defp get_extended_properties_ast!(extended_module) do
     Code.ensure_compiled!(extended_module).__jungle_type__()
   end
 

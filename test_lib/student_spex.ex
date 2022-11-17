@@ -1,29 +1,29 @@
-defmodule StudentOld do
+defmodule StudentSpex do
   alias OpenApiSpex.Schema
 
   require OpenApiSpex
 
   OpenApiSpex.schema(
     %Schema{
-      title: "StudentOld",
+      title: "StudentSpex",
       type: :object,
       nullable: false,
       required:
-        PersonOld.schema().required ++
+        PersonSpex.schema().required ++
           [
             :degree_type,
             :university
           ],
       properties:
         Map.merge(
-          PersonOld.schema().properties,
+          PersonSpex.schema().properties,
           %{
             degree_type: %Schema{
               type: :string,
               enum: ["bachelor's", "master's"],
               nullable: false
             },
-            university: UniversityNew,
+            university: UniversityJungle,
             grades: %Schema{
               type: :array,
               nullable: true,

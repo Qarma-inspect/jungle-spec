@@ -57,21 +57,6 @@ defmodule JungleSpec.TypespecGenerator do
     additional_properties_ast(schema, references_to_modules) ++ properties_asts ++ extended_properties_asts
   end
 
-  defp additional_properties_ast(schema, references_to_modules) do
-    if schema.additionalProperties do
-      key_type = to_type_ast(%Schema{type: :string}, references_to_modules)
-
-      value_type =
-        schema.additionalProperties
-        |> maybe_extend_by_nil()
-        |> to_type_ast(references_to_modules)
-
-      [{key_type, value_type}]
-    else
-      []
-    end
-  end
-
   def create_map_type(properties_types) do
     {:%{}, [], properties_types}
   end
@@ -135,6 +120,16 @@ defmodule JungleSpec.TypespecGenerator do
     end
   end
 
+  defp maybe_extend_by_nil(%Schema{type: :object, additionalProperties: properties, nullable: nullable} = schema) do
+    properties = maybe_extend_by_nil(properties)
+
+    if nullable do
+      %Schema{oneOf: [%Schema{schema | additionalProperties: properties}, nil]}
+    else
+      %Schema{schema | additionalProperties: properties}
+    end
+  end
+
   @primitive_types [:integer, :number, :string, :boolean]
   defp maybe_extend_by_nil(%Schema{type: type, nullable: nullable} = schema) when type in @primitive_types do
     if nullable do
@@ -172,6 +167,17 @@ defmodule JungleSpec.TypespecGenerator do
     [to_type_ast(schema, references_to_modules)]
   end
 
+  # %{optional(String.t()) => properties_type}
+  defp to_type_ast(%Schema{type: :object, additionalProperties: properties}, references_to_modules) do
+    {:%{}, [],
+     [
+       {
+         {:optional, [], [to_type_ast(%Schema{type: :string}, references_to_modules)]},
+         to_type_ast(properties, references_to_modules)
+       }
+     ]}
+  end
+
   defp to_type_ast(%OpenApiSpex.Reference{"$ref": reference}, references_to_modules) do
     to_type_ast(references_to_modules[reference], references_to_modules)
   end
@@ -204,5 +210,20 @@ defmodule JungleSpec.TypespecGenerator do
     module
     |> Module.split()
     |> Enum.map(&String.to_atom/1)
+  end
+
+  defp additional_properties_ast(schema, references_to_modules) do
+    if schema.additionalProperties do
+      key_type = to_type_ast(%Schema{type: :string}, references_to_modules)
+
+      value_type =
+        schema.additionalProperties
+        |> maybe_extend_by_nil()
+        |> to_type_ast(references_to_modules)
+
+      [{key_type, value_type}]
+    else
+      []
+    end
   end
 end

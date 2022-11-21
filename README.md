@@ -12,7 +12,8 @@ defmodule Employee do
     property :level, :string, enum: ["L1", "L2", "L3"]
     property :experience, [:number, :string]
     property :is_manager, :boolean, default: false
-    property :known_technologies, {:array, :string}, nullable: true
+    property :team_members, {:array, Employee}, nullable: true
+    property :technologies_to_experience, {:map, :string}
     additional_properties :integer
   end
 end
@@ -25,8 +26,9 @@ Other properties in the `Employee` schema:
 * `:level` - it has type `:string` and can be one of `["L1", "L2", "L3"]`
 * `:experience` - its type is a union of `:number` and `:string`
 * `:is_manager` - it has type `:boolean` and is `false` by default
-* `:known_technologies` - its type is an array with strings or `nil`
-* `additional_properties` - it can have more properties having type `:integer`
+* `:team_members` - its type is an array with employees or `nil`
+* `:technologies_to_experience` - its type is an object with additional properties having type `:string`
+* `additional_properties` - the schema can have more properties having type `:integer`
 
 All properties are required and not nullable by default.
 
@@ -40,7 +42,8 @@ Also, the following typespec will be created:
   level: String.t(),
   experience: number() | String.t(),
   is_manager: boolean(),
-  known_technologies: [:String.t()] | nil
+  team_members: [t()] | nil,
+  technologies_to_experience: %{optional(String.t()) => String.t()},
   ... # and all properties from Person
 }
 ```

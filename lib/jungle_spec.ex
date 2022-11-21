@@ -11,8 +11,9 @@ defmodule JungleSpec do
           property :level, :string, enum: ["L1", "L2", "L3"]
           property :experience, [:number, :string]
           property :is_manager, :boolean, default: false
-          property :known_technologies, {:array, :string}
-          additional_properties :string
+          property :team_members, {:array, Employee}, nullable: true
+          property :technologies_to_experience, {:map, :string}
+          additional_properties :integer
         end
       end
   """
@@ -23,11 +24,10 @@ defmodule JungleSpec do
     quote do
       import JungleSpec,
         only: [
-          additional_properties: 1,
+          additional_properties: 2,
           open_api_object: 1,
           open_api_object: 2,
           open_api_object: 3,
-          open_api_type: 2,
           open_api_type: 3,
           property: 3
         ]
@@ -65,7 +65,7 @@ defmodule JungleSpec do
       default it is `true`
 
     * `:struct?` - a boolean value telling OpenApiSpex if it should create a struct out of the
-      object. It will also add the struct to the typespec if set to `true`
+      object. It will also add the struct to the typespec if set to `true`. By default it is `true`
   """
   defmacro open_api_object(title, opts, do: block) do
     quote do
@@ -142,7 +142,7 @@ defmodule JungleSpec do
 
     * `name` - an atom being a name of the property
 
-    * `type` - an atom proving the type of the schema
+    * `type` - an atom or a tuple proving the type of the schema
 
   Allowed types:
 
@@ -157,13 +157,16 @@ defmodule JungleSpec do
     * `{:array, type}` - a list of elements having provided type. `type` have to be one of the
       allowed types
 
+    * `{:map, type}` - a nested object with additional properties having provided `type`, which
+      have to be one of the allowed types
+
     * `[type_1, type_2, ...]` - a union of the provided types. The types have to be allowed
 
     * `module` - a module name that has it's own schema
 
   Property also has an optional keyword list with the following possible options:
 
-    * `:default` - default value for the property. It has to match its type
+    * `:default` - default value for the property. It has to match type of the property
 
     * `:description` - a binary describing the property
 
@@ -288,6 +291,23 @@ defmodule JungleSpec do
     struct(Schema, schema_map)
   end
 
+  defp prepare_property_schema(module, title, name, {:map, type}, opts) do
+    validate_opts!(name, {:map, type}, opts)
+
+    nested_properties_schema = prepare_property_schema(module, title, name, type, clear_opts_for_nested_types(opts))
+
+    nullable = Keyword.get(opts, :nullable, false)
+
+    schema_map =
+      maybe_add_opts(
+        %{type: :object, properties: %{}, additionalProperties: nested_properties_schema, nullable: nullable},
+        [:description, :default],
+        opts
+      )
+
+    struct(Schema, schema_map)
+  end
+
   defp prepare_property_schema(module, title, name, union_types, opts) when is_list(union_types) do
     validate_opts!(name, union_types, opts)
 
@@ -401,6 +421,10 @@ defmodule JungleSpec do
 
   defp has_valid_type?(default, {:array, expected_type}) when is_list(default) do
     Enum.all?(default, fn default_item -> has_valid_type?(default_item, expected_type) end)
+  end
+
+  defp has_valid_type?(default, {:map, expected_type}) when is_map(default) do
+    Enum.all?(default, fn {key, value} -> is_binary(key) and has_valid_type?(value, expected_type) end)
   end
 
   defp has_valid_type?(_default, _expected_type), do: false

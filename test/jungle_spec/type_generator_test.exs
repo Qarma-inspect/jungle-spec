@@ -53,6 +53,24 @@ defmodule JungleSpec.TypespecGeneratorTest do
       assert generate_type(schema, [], []) == type
     end
 
+    test "map type" do
+      schema = %Schema{
+        title: "Example",
+        type: :object,
+        nullable: false,
+        properties: %{
+          map: %Schema{type: :object, additionalProperties: %Schema{type: :number, nullable: false}}
+        }
+      }
+
+      type =
+        quote do
+          %{map: %{optional(String.t()) => number()}}
+        end
+
+      assert generate_type(schema, [], []) == type
+    end
+
     test "union type" do
       schema = %Schema{
         title: "Example",
@@ -313,7 +331,7 @@ defmodule JungleSpec.TypespecGeneratorTest do
         title: "Example",
         oneOf: [
           %Schema{type: :array, items: %Schema{type: :integer, nullable: true}, nullable: true},
-          %Schema{type: :boolean, nullable: false},
+          %Schema{type: :object, additionalProperties: %Schema{type: :boolean, nullable: false}},
           %OpenApiSpex.Reference{"$ref": reference}
         ],
         nullable: true
@@ -321,7 +339,7 @@ defmodule JungleSpec.TypespecGeneratorTest do
 
       type =
         quote do
-          [integer() | nil] | boolean() | JungleSpec.TypespecGeneratorTest.ExampleModule.t() | nil
+          [integer() | nil] | %{optional(String.t()) => boolean()} | JungleSpec.TypespecGeneratorTest.ExampleModule.t() | nil
         end
 
       references_to_modules = [{reference, JungleSpec.TypespecGeneratorTest.ExampleModule}]

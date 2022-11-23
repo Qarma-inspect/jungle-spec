@@ -12,7 +12,8 @@ defmodule StudentSpex do
         PersonSpex.schema().required ++
           [
             :degree_type,
-            :university
+            :university,
+            :assignments
           ],
       properties:
         Map.merge(
@@ -34,6 +35,13 @@ defmodule StudentSpex do
                 ],
                 nullable: false
               }
+            },
+            assignments: %Schema{
+              type: :object,
+              nullable: true,
+              properties: %{},
+              additionalProperties: %Schema{type: :array, items: %Schema{type: :string, nullable: false}, nullable: false},
+              description: "Assignemnts per subject"
             }
           }
         )

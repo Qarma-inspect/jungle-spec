@@ -32,8 +32,7 @@ defmodule StudentSpex do
                 oneOf: [
                   %Schema{type: :number, nullable: false},
                   %Schema{type: :string, nullable: false}
-                ],
-                nullable: false
+                ]
               }
             },
             assignments: %Schema{

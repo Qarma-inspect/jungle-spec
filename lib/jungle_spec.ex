@@ -316,11 +316,9 @@ defmodule JungleSpec do
       |> Enum.map(&prepare_property_schema(module, title, name, &1, clear_opts_for_nested_types(opts)))
       |> Enum.uniq()
 
-    nullable = Keyword.get(opts, :nullable, false)
-
     schema_map =
       maybe_add_opts(
-        %{oneOf: items_schema, nullable: nullable},
+        %{oneOf: items_schema},
         [:description, :default],
         opts
       )
@@ -504,6 +502,7 @@ defmodule JungleSpec do
   def enforced_properties(schema) do
     schema.properties
     |> Enum.filter(fn
+      {_name, %Schema{nullable: nil}} -> false
       {_name, %Schema{nullable: nullable}} -> not nullable
       {_name, %Schema{default: _default}} -> false
       {_name, _module} -> true

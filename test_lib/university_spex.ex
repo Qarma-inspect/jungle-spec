@@ -28,7 +28,6 @@ defmodule UniversitySpex do
         type: :array,
         nullable: true,
         items: %Schema{
-          nullable: false,
           oneOf: [%OpenApiSpex.Reference{"$ref": "#/components/schemas/IDJungle"}, %Schema{type: :integer, nullable: false}]
         }
       }

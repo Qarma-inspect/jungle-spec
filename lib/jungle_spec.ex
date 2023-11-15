@@ -2,20 +2,197 @@ defmodule JungleSpec do
   @moduledoc """
   A module providing simplified and less verbose way of definining OpenApiSpex types.
 
-  Example definition:
+  JungleSpec provides two main entry points: `open_api_object` to define an object, and `open_api_type` to define
+  a non-object type. Both generate an OpenApiSpec schema (`OpenApiSpex.Schema`) and an internal Elixir type.
+
+  Only a single `open_api_object` or `open_api_type` clause is allowed per module, as the underlying Elixir type
+  is defined as the `t()`-type within that module.
+
+  The generated OpenApiSpex schema can be obtained by calling `schema/1` function on the module.
+
+  The OpenAPI specification requires that each schemas has a unique name, called title. This is provided as the
+  first argument for both `open_api_object` and `open_api_type` and must be a string.
+
+  # Non-object Schemas
+  `open_api_type` is used to define non-object schemas. That could be enumerable strings, regexp-limited strings,
+  union types, and similar.
+
+  Example:
+
+      defmodule EnumExample do
+        use JungleSpec
+
+        open_api_type "NonObjectExample", :string, enum: ["ValueA", "ValueB"]
+      end
+
+  The above example will create the following OpenApiSpex schema struct:
+
+      %OpenApiSpex.Schema%{
+        type: :string,
+        enum: ["ValueA", "ValueB"],
+        title: "NonObjectExample",
+        nullable: false
+      }
+
+  Elixir-wise, the `t` type is defined as
+
+      @type t() :: String.t()
+
+
+  See `open_api_type/3` for more details in supported types and options.
+
+  # Object Schemas
+  `open_api_object/3` is used to specify object-type schemas. By default, object schemas are mapped to Elixir structs,
+  but can be mapped to maps instead (see the "Elixir Struct or Map"-section for the details).
+
+  `open_api_object` is used to set the title of the object-schema, and object-level options.
+  The properties of the object are defined using the `property/3` macro. Here two parameters are required: The
+  name and type of the property.
+
+  Example:
+
+      defmodule Person do
+        use JungleSpec
+
+        open_api_object "Person" do
+          property :name, :string
+          property :age, :integer
+        end
+      end
+
+  This will generate the following OpenApiSpex Schema struct:
+
+      %OpenApiSpex.Schema%{
+        type: :object,
+        title: "Person",
+        required: [:name, :age],
+        nullable: false,
+        properties: %{
+          name: %OpenApiSpex.Schema%{type: :string, nullable: false},
+          age: %OpenApiSpex.Schema%{type: :integer, nullable: false}
+        },
+        "x-struct": Person
+      }
+
+  And the following Elixir type (struct):
+
+      @type t() :: %Person{
+                age: integer(),
+                name: String.t()
+              }
+
+  ## Required and Nullable Properties
+  By default, all properties are "required". That means that the generated OpenApiSpec schema will have all
+  properties in the list of `required` properties.
+
+  It is possible to set `required: false` for a specific property. However, then a `default` value MUST be provided,
+  or a compile-time error is emitted:
+
+      defmodule Person do
+        use JungleSpec
+
+        open_api_object "Person" do
+          property :name, :string
+          property :age, :integer, required: false, default: 0
+        end
+      end
+
+  Please note, that even when `required: false` for a field, the Elixir struct still needs the value provided!
+
+  It is also possible to set `required: false` on the entire object, and only setting `required: true` on some fields:
+
+      defmodule Person do
+        use JungleSpec
+
+        open_api_object "Person", required: false do
+          property :name, :string, required: true
+          property :age, :integer, default: 0
+        end
+      end
+
+  A default value must still be provided for `:age` in order for this to compile.
+
+  All properties have a default setting of `nullable: false`, i.e. they cannot be `nil`/`null`.
+  By setting `nullable: true` on a property, `nil`/`null` becomes a valid value. This will also change the Elixir-struct,
+  such that the property is no longer required (but will default to `nil` if not given) -- even when a default value other
+  than `nil` is provided.
+
+  ## Elixir Struct or Map
+  Elixir structs have the property, that all declared fields are always present. If it is necessary to define an
+  object, where not all properties are present all the time, we cannot map that into an Elixir struct. Instead we
+  can map it to an Elixir map, by providing the `struct?: false` option to `open_api_object':
+
+      defmodule Person do
+        use JungleSpec
+
+        open_api_object "Person", struct?: false do
+          property :name, :string
+          property :age, :integer, required: false
+        end
+      end
+
+  Note, that it is no longer necessary to provide a default value for `:age`, as the field is allowed not to be
+  present. The Elixir type for this schema is:
+
+      @type t() :: %{
+                age: integer(),
+                name: String.t()
+              }
+
+  Two important things to note here: First, it is a map, an not a struct. Second, it wrongly, says that `:age` is required.
+  The typespec should have had an `optional(age) => integer()`, but this has not yet been implemented.
+  In practice, this is only an issue if the type is used, and Dialyzer catches the bug. The main important point of doing
+  this, is that the generated OpenApiSpex schema struct instructs OpenApiSpex to generate a map and not a struct.
+  Not optimal, but it works :-)
+
+  ## Schema Extension (Inheritance)
+  Sometimes, it can be helpful to create a schema that is an extension of another schema.
+
+  The following schema extends the `Person` schema used as a previous example:
 
       defmodule Employee do
         use JungleSpec
 
-        open_api_object "Employee", extends: Person, struct?: false do
+        open_api_object "Employee", extends: Person do
           property :level, :string, enum: ["L1", "L2", "L3"]
           property :experience, [:number, :string]
-          property :is_manager, :boolean, default: false
-          property :team_members, {:array, Employee}, nullable: true
-          property :technologies_to_experience, {:map, :string}
-          additional_properties :integer
         end
       end
+
+    This will simply copy over all properties from `Person` and include them along with the the new ones provided.
+    The OpenApiSpex schema structure would look like:
+
+        %OpenApiSpex.Schema%{
+          type: :object,
+          title: "Employee",
+          required: [:name, :age, :level, :experience],
+          nullable: false,
+          properties: %{
+            name: %OpenApiSpex.Schema%{type: :string, nullable: false},
+            level: %OpenApiSpex.Schema%{
+              type: :string,
+              enum: ["L1", "L2", "L3"],
+              nullable: false
+            },
+            experience: %OpenApiSpex.Schema%{
+              oneOf: [
+                %OpenApiSpex.Schema%{type: :number, nullable: false},
+                %OpenApiSpex.Schema%{type: :string, nullable: false}
+              ]
+            },
+            age: %OpenApiSpex.Schema%{type: :integer, nullable: false}
+          },
+          "x-struct": Employee
+        }
+
+    While the Elixir type will be:
+
+          @type t() :: %Employee{
+              age: integer(),
+              experience: number() | String.t(),
+              level: String.t(),
+              name: String.t()
+            }
   """
 
   alias OpenApiSpex.Schema
@@ -114,10 +291,49 @@ defmodule JungleSpec do
 
     * `title` - a binary being a title of the schema
 
-    * `type` - an atom proving the type of the schema. More information in `property` macro
+    * `type` - an atom proving the type of the schema.
 
-  It is followed by an optional keyword list of options. Possible options are all options that
-  `property` can have.
+  It is followed by an optional keyword list of options.
+
+  Allowed types:
+
+    * `:integer` - maps to the type of the same name.
+
+    * `:number` - either integer or float. Maps to the type of the same name.
+
+    * `:string` - a binary. Maps to the type of the same name.
+
+    * `:boolean` - maps to the type of the same name.
+
+    * `{:array, type}` - a list of elements having provided type. `type` have to be one of the
+      allowed types.
+
+    * `{:map, type}` - a nested object with additional properties having provided `type`, which
+      have to be one of the allowed types.
+
+    * `[type_1, type_2, ...]` - a union of the provided types. The types have to be allowed.
+
+    * `module` - a module name that has it's own schema.
+
+  Supported options are:
+
+    * `:default` - default value for the property. It has to match type of the property.
+
+    * `:description` - a binary describing the property.
+
+    * `:enum` - a list of possible values which have to be binaries. Only valid for `:string` type.
+
+    * `:example` - an example of the property. It has to match its type.
+
+    * `:format` - a binary describing property's format.
+
+    * `:inline` - a boolean value that is used if the property's type is another module. Then,
+      if `inline: true`, the module's schema is just inlined. Otherwise, only the reference is
+      used. By default, the value is propagated from the object.
+
+    * `:nullable` - a boolean value specifying if the property can be `nil`. `false` by default.
+
+    * `:pattern` - a regular expression describing possible format of the property. Only valid for `:string` type.
   """
   defmacro open_api_type(title, type, opts \\ []) do
     quote do

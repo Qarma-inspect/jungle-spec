@@ -120,7 +120,7 @@ defmodule JungleSpec do
   ## Elixir Struct or Map
   Elixir structs have the property, that all declared fields are always present. If it is necessary to define an
   object, where not all properties are present all the time, we cannot map that into an Elixir struct. Instead we
-  can map it to an Elixir map, by providing the `struct?: false` option to `open_api_object':
+  can map it to an Elixir map, by providing the `struct?: false` option to `open_api_object`:
 
       defmodule Person do
         use JungleSpec
@@ -162,37 +162,37 @@ defmodule JungleSpec do
     This will simply copy over all properties from `Person` and include them along with the the new ones provided.
     The OpenApiSpex schema structure would look like:
 
-        %OpenApiSpex.Schema%{
-          type: :object,
-          title: "Employee",
-          required: [:name, :age, :level, :experience],
-          nullable: false,
-          properties: %{
-            name: %OpenApiSpex.Schema%{type: :string, nullable: false},
-            level: %OpenApiSpex.Schema%{
-              type: :string,
-              enum: ["L1", "L2", "L3"],
-              nullable: false
-            },
-            experience: %OpenApiSpex.Schema%{
-              oneOf: [
-                %OpenApiSpex.Schema%{type: :number, nullable: false},
-                %OpenApiSpex.Schema%{type: :string, nullable: false}
-              ]
-            },
-            age: %OpenApiSpex.Schema%{type: :integer, nullable: false}
+      %OpenApiSpex.Schema%{
+        type: :object,
+        title: "Employee",
+        required: [:name, :age, :level, :experience],
+        nullable: false,
+        properties: %{
+          name: %OpenApiSpex.Schema%{type: :string, nullable: false},
+          level: %OpenApiSpex.Schema%{
+            type: :string,
+            enum: ["L1", "L2", "L3"],
+            nullable: false
           },
-          "x-struct": Employee
-        }
+          experience: %OpenApiSpex.Schema%{
+            oneOf: [
+              %OpenApiSpex.Schema%{type: :number, nullable: false},
+              %OpenApiSpex.Schema%{type: :string, nullable: false}
+            ]
+          },
+          age: %OpenApiSpex.Schema%{type: :integer, nullable: false}
+        },
+        "x-struct": Employee
+      }
 
     While the Elixir type will be:
 
-          @type t() :: %Employee{
-              age: integer(),
-              experience: number() | String.t(),
-              level: String.t(),
-              name: String.t()
-            }
+      @type t() :: %Employee{
+          age: integer(),
+          experience: number() | String.t(),
+          level: String.t(),
+          name: String.t()
+        }
   """
 
   alias OpenApiSpex.Schema

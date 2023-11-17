@@ -27,7 +27,7 @@ defmodule JungleSpec.MixProject do
 
   defp package do
     [
-      licenses: "MIT",
+      licenses: ["MIT"],
       links: %{
         "GitHub" => source_url()
       }

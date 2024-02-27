@@ -325,7 +325,7 @@ defmodule JungleSpec do
 
     * `:example` - an example of the property. It has to match its type.
 
-    * `:format` - a binary describing property's format.
+    * `:format` - an atom describing property's format.
 
     * `:inline` - a boolean value that is used if the property's type is another module. Then,
       if `inline: true`, the module's schema is just inlined. Otherwise, only the reference is
@@ -391,7 +391,7 @@ defmodule JungleSpec do
 
     * `:example` - an example of the property. It has to match its type
 
-    * `:format` - a binary describing property's format
+    * `:format` - an atom describing property's format
 
     * `:inline` - a boolean value that is used if the property's type is another module. Then,
       if `inline: true`, the module's schema is just inlined. Otherwise, only the reference is

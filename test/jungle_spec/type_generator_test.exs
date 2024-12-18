@@ -36,7 +36,7 @@ defmodule JungleSpec.TypespecGeneratorTest do
 
       expected_types = Map.new(expected_type_fields)
 
-      assert {:%{}, [], type_fields} =  generate_type(schema, [], [])
+      assert {:%{}, [], type_fields} = generate_type(schema, [], [])
       types = Map.new(type_fields)
 
       assert expected_types == types
@@ -55,6 +55,24 @@ defmodule JungleSpec.TypespecGeneratorTest do
       type =
         quote do
           %{arr: [String.t()]}
+        end
+
+      assert generate_type(schema, [], []) == type
+    end
+
+    test "file_upload type" do
+      schema = %Schema{
+        title: "Example",
+        type: :object,
+        nullable: false,
+        properties: %{
+          file_upload: %Schema{type: :string, format: :binary}
+        }
+      }
+
+      type =
+        quote do
+          %{file_upload: Plug.Upload.t()}
         end
 
       assert generate_type(schema, [], []) == type

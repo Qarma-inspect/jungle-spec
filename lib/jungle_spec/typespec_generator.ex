@@ -151,6 +151,10 @@ defmodule JungleSpec.TypespecGenerator do
     {:number, [], []}
   end
 
+  defp to_type_ast(%Schema{type: :string, format: :binary}, _references_to_modules) do
+    {{:., [], [{:__aliases__, [alias: false], [:Plug, :Upload]}, :t]}, [], []}
+  end
+
   defp to_type_ast(%Schema{type: :string}, _references_to_modules) do
     {{:., [], [{:__aliases__, [alias: false], [:String]}, :t]}, [], []}
   end

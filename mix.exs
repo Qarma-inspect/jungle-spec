@@ -39,7 +39,7 @@ defmodule JungleSpec.MixProject do
   defp deps do
     [
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
-      {:open_api_spex, "~> 3.12"}
+      {:open_api_spex, "~> 3.21"}
     ]
   end
 end

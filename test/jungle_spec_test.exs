@@ -19,4 +19,10 @@ defmodule JungleSpecTest do
 
     assert id_new == %{id_old | title: "IDJungle"}
   end
+
+  test "String with :binary format becomes Plug.Upload.t()" do
+    assert {:ok, types} = Code.Typespec.fetch_types(FileUpload)
+    type_str = types |> hd() |> elem(1) |> Code.Typespec.type_to_quoted() |> Macro.to_string()
+    assert type_str == "t() :: %FileUpload{file: Plug.Upload.t(), metadata: %{optional(String.t()) => String.t()}}"
+  end
 end

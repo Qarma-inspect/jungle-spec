@@ -1,4 +1,4 @@
-locals_without_parens =  [
+locals_without_parens = [
   additional_properties: 1,
   additional_properties: 2,
   open_api_object: 1,

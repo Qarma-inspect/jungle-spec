@@ -15,9 +15,12 @@ defmodule JungleSpecTest do
 
   test "Old and new Type schemas are the same" do
     id_new = IDJungle.schema()
-    id_old = IDSpex.schema()
+    id_old = %{IDSpex.schema() | title: "IDJungle"}
 
-    assert id_new == %{id_old | title: "IDJungle"}
+    # Regex structs built in different modules do not compare equal on Elixir 1.20, so the
+    # pattern is compared through its source.
+    assert id_new.pattern.source == id_old.pattern.source
+    assert %{id_new | pattern: nil} == %{id_old | pattern: nil}
   end
 
   test "String with :binary format becomes Plug.Upload.t()" do

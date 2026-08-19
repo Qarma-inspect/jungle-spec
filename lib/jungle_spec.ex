@@ -244,11 +244,14 @@ defmodule JungleSpec do
     quote do
       import JungleSpec,
         only: [
+          additional_properties: 1,
           additional_properties: 2,
           open_api_object: 1,
           open_api_object: 2,
           open_api_object: 3,
+          open_api_type: 2,
           open_api_type: 3,
+          property: 2,
           property: 3
         ]
     end

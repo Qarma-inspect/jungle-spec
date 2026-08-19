@@ -105,6 +105,11 @@ defmodule JungleSpecTest do
       assert NestedJungle.schema().properties.grid.items.items.minLength == 2
     end
 
+    test "open_api_type can be given without an option list" do
+      assert TwoArgJungle.schema().type == :string
+      assert TwoArgJungle.schema().title == "TwoArgJungle"
+    end
+
     test "an object level default reaches the schema" do
       assert NestedJungle.schema().default == %{"grid" => []}
     end

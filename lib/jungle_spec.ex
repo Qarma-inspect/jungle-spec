@@ -269,10 +269,6 @@ defmodule JungleSpec do
 
   Possible options
 
-    * `:description` - a binary describing the whole object
-
-    * `:example` - a map being an example of the object defined by the schema
-
     * `:extends` - a module of the schema that this schema extends. All properties of the extended
       schema will be added to the current schema, preserving the information if the properties are
       required. It does not propagate nullability of the extended schema. Ensure that
@@ -367,8 +363,8 @@ defmodule JungleSpec do
 
     * `module` - a module name that has it's own schema.
 
-  The options are the ones accepted by `property/3`, except for `:extends` and `:struct?`,
-  which only `open_api_object/3` supports.
+  The options are the ones accepted by `property/3`. `:extends` and `:struct?` are supported only
+  by `open_api_object/3` and raise here.
   """
   defmacro open_api_type(title, type, opts \\ []) do
     quote do

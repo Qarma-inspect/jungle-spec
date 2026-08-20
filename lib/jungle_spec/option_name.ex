@@ -8,7 +8,11 @@ defmodule JungleSpec.OptionName do
   """
 
   @doc """
-  Returns the option name under which a given `OpenApiSpex.Schema` field is accepted.
+  Translates a name into the spelling JungleSpec uses for options.
+
+  `minLength` becomes `min_length` and `x-validate` becomes `x_validate`; a name that is already
+  written that way is returned unchanged. Whether the resulting option is accepted for a given
+  macro and type is decided elsewhere.
   """
   @spec to_option(atom()) :: atom()
   def to_option(schema_field) do

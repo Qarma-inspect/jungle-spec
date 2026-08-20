@@ -223,11 +223,12 @@ defmodule JungleSpec do
   @object_only_opts @object_opts -- @property_opts
 
   @numeric_types [:integer, :number]
+  @enum_types [:integer, :number, :string]
 
   # Options that only make sense for a given kind of value. For a collection they describe its
   # items, which is why `{:array, type}` and `{:map, type}` also accept the ones valid for `type`.
-  @numeric_opts [:exclusiveMaximum, :exclusiveMinimum, :format, :maximum, :minimum, :multipleOf]
-  @string_opts [:format, :maxLength, :minLength, :pattern]
+  @numeric_opts [:enum, :exclusiveMaximum, :exclusiveMinimum, :format, :maximum, :minimum, :multipleOf]
+  @string_opts [:enum, :format, :maxLength, :minLength, :pattern]
   @array_opts [:maxItems, :minItems, :uniqueItems]
   @map_opts [:maxProperties, :minProperties]
   @item_opts Enum.uniq(@numeric_opts ++ @string_opts)
@@ -441,18 +442,17 @@ defmodule JungleSpec do
 
   Some options only apply to certain types, and are rejected elsewhere:
 
-    * `:format`, `:minimum`, `:maximum`, `:exclusiveMinimum`, `:exclusiveMaximum` and
+    * `:enum`, `:format`, `:minimum`, `:maximum`, `:exclusiveMinimum`, `:exclusiveMaximum` and
       `:multipleOf` on `:integer` and `:number`. Note that `OpenApiSpex` does not enforce
       `:multipleOf` for `:number`, so it reaches the document but is not checked while casting
 
-    * `:format`, `:minLength`, `:maxLength` and `:pattern` on `:string`
+    * `:enum`, `:format`, `:minLength`, `:maxLength` and `:pattern` on `:string`
 
     * `:minItems`, `:maxItems` and `:uniqueItems` on `{:array, type}`
 
     * `:minProperties` and `:maxProperties` on `{:map, type}` and on objects
 
-  `:enum` is valid only for `:string` and its values have to be binaries. A `:default` has to
-  match the type it is given for.
+  The values of an `:enum` have to match the type it is given for, and so does a `:default`.
 
   An option describing a single value applies to the items of a collection, so `{:array, type}`
   and `{:map, type}` additionally accept whatever `type` accepts and hand it to the item schema:
@@ -735,17 +735,20 @@ defmodule JungleSpec do
     Enum.filter(list_allowed_opts(type), &(&1 in @item_opts))
   end
 
-  defp validate_enum!(name, type, opts) do
+  # Which types accept an enum at all is decided by `list_allowed_opts/1`; for a collection the
+  # nested schema validates the values against the item type.
+  defp validate_enum!(name, type, opts) when type in @enum_types do
     if Keyword.has_key?(opts, :enum) do
-      if type != :string do
-        raise ArgumentError,
-              "#{name} has an enum option, but it can be provided only for string type"
-      end
+      values = Keyword.get(opts, :enum)
+      validate_enum_values!(name, type, values)
+    end
+  end
 
-      if opts |> Keyword.get(:enum) |> Enum.any?(fn item -> not is_binary(item) end) do
-        raise ArgumentError,
-              "#{name} has values of invalid types in the enum option. They should be binaries"
-      end
+  defp validate_enum!(_name, _type, _opts), do: :ok
+
+  defp validate_enum_values!(name, type, values) do
+    if Enum.any?(values, &(not has_valid_type?(&1, type))) do
+      raise ArgumentError, "the enum values of #{name} do not all match its type #{inspect(type)}"
     end
   end
 

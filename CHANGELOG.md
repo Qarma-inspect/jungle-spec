@@ -22,8 +22,10 @@ previously accepted and silently discarded now raise an `ArgumentError`.
   `property :ids, {:array, :string}, format: :uuid, minItems: 1` puts `minItems` on the array and
   `format` on its items. Every other option describes the schema it is given for: previously keys
   such as `example` ended up on the item schema instead of the container.
+* An `enum` is accepted for `:integer` and `:number` as well as `:string`; its values have to
+  match the type they are given for. It used to be rejected for anything but `:string`.
 * Object level options are validated the same way property level ones are. An `enum` raises,
-  since it needs a `:string` type, and a `default` has to be a map.
+  since an object is not a scalar, and a `default` has to be a map.
 
 Unrelated to the above, and not breaking:
 

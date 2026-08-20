@@ -8,5 +8,6 @@ defmodule ConstrainedJungle do
     property :ids, {:array, :string}, format: :uuid, minItems: 2
     property :codes, {:map, :string}, minLength: 2, minProperties: 1, example: %{"a" => "bb"}
     property :either, [:integer, :string], description: "a number or a word", example: 5
+    property :rank, :integer, enum: [1, 2, 3]
   end
 end

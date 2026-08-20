@@ -95,10 +95,20 @@ defmodule JungleSpecTest do
                    &define_union_item_option_schema/0
     end
 
-    test "an object level enum is rejected the same way a property level one is" do
+    test "an object level enum is rejected" do
       assert_raise ArgumentError,
-                   ~r/enum option, but it can be provided only for string type/,
+                   ~r/:enum cannot be given as an option for ObjectEnum: it does not apply to type :object/,
                    &define_object_enum_schema/0
+    end
+
+    test "an enum is accepted for any scalar type, not only strings" do
+      assert ConstrainedJungle.schema().properties.rank.enum == [1, 2, 3]
+    end
+
+    test "enum values have to match the type they are given for" do
+      assert_raise ArgumentError,
+                   ~r/the enum values of rank do not all match its type :integer/,
+                   &define_mismatched_enum_schema/0
     end
 
     test "an item option reaches the innermost schema of nested collections" do
@@ -179,6 +189,16 @@ defmodule JungleSpecTest do
 
       open_api_object "UnionItemOption" do
         property :either, [:string, :integer], format: :uuid
+      end
+    end
+  end
+
+  defp define_mismatched_enum_schema do
+    defmodule MismatchedEnum do
+      use JungleSpec
+
+      open_api_object "MismatchedEnum" do
+        property :rank, :integer, enum: [1, "two"]
       end
     end
   end

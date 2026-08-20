@@ -111,6 +111,14 @@ defmodule JungleSpecTest do
                    &define_mismatched_enum_schema/0
     end
 
+    test "every camelCased schema field is rejected with a usable message" do
+      camel_cased = Enum.filter(list_schema_fields(), &camel_cased?/1)
+      unhelpful = Enum.reject(camel_cased, &helpful_rejection?/1)
+
+      assert camel_cased != []
+      assert unhelpful == []
+    end
+
     test "a camelCased option name is rejected and points at the Elixir one" do
       assert_raise ArgumentError,
                    ~r/:minLength is not a supported option for slug\. Did you mean :min_length\?/,
@@ -146,6 +154,54 @@ defmodule JungleSpecTest do
       assert_raise ArgumentError,
                    ~r/:struct\? cannot be given as an option for OnlyObject: it is only supported by open_api_object/,
                    &define_object_only_option_schema/0
+    end
+  end
+
+  defp list_schema_fields do
+    Map.keys(Map.from_struct(%OpenApiSpex.Schema{}))
+  end
+
+  # Decided from the spelling alone, so that a regression in the translation removes coverage from
+  # nothing and instead makes the assertion below fail.
+  defp camel_cased?(schema_field) do
+    String.match?(Atom.to_string(schema_field), ~r/[A-Z-]/)
+  end
+
+  defp helpful_rejection?(schema_field) do
+    message = describe_rejection(schema_field)
+    option = JungleSpec.OptionName.to_option(schema_field)
+
+    String.contains?(message, "Did you mean #{inspect(option)}?") or
+      String.contains?(message, "sets it itself")
+  end
+
+  defp describe_rejection(schema_field) do
+    code = """
+    defmodule CamelCased#{System.unique_integer([:positive])} do
+      use JungleSpec
+
+      open_api_object "CamelCased" do
+        property :slug, :string, #{to_keyword_key(schema_field)} 1
+      end
+    end
+    """
+
+    try do
+      Code.compile_string(code)
+      "the option was accepted"
+    rescue
+      error in ArgumentError -> Exception.message(error)
+    end
+  end
+
+  # A name that is not a bare atom literal has to be quoted; quoting the others would warn.
+  defp to_keyword_key(schema_field) do
+    name = Atom.to_string(schema_field)
+
+    if String.match?(name, ~r/^[a-zA-Z_][a-zA-Z0-9_]*$/) do
+      "#{name}:"
+    else
+      ~s("#{name}":)
     end
   end
 

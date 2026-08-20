@@ -673,7 +673,9 @@ defmodule JungleSpec do
       key in known_opts ->
         :ok
 
-      key in @derived_schema_fields ->
+      # The camelCased spelling is matched too, so that a schema field JungleSpec sets is reported
+      # as such however it was written.
+      key in @derived_schema_fields or OptionName.to_option(key) in @derived_schema_fields ->
         raise ArgumentError,
               "#{inspect(key)} cannot be given as an option for #{name}: JungleSpec sets it itself"
 

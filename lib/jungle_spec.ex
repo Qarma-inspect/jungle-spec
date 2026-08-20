@@ -195,7 +195,13 @@ defmodule JungleSpec do
         }
   """
 
+  alias JungleSpec.OptionName
   alias OpenApiSpex.Schema
+
+  # Options are named the way Elixir names things and translated to the camelCased schema field
+  # they set, so the `minLength` field of `OpenApiSpex.Schema` is given as `min_length`.
+  @field_by_option Map.new(Map.keys(Map.from_struct(%Schema{})), &{OptionName.to_option(&1), &1})
+  @option_names Map.keys(@field_by_option)
 
   # Options interpreted by JungleSpec itself. They never reach the generated schema struct as
   # given: `:extends` and `:struct?` shape the module, `:inline` picks reference vs inlining, and
@@ -205,19 +211,18 @@ defmodule JungleSpec do
   # Schema fields JungleSpec derives from the positional type argument. Accepting them as options
   # would let a caller silently overwrite what the macro already decided.
   @derived_schema_fields [
-    :additionalProperties,
-    :allOf,
-    :anyOf,
+    :additional_properties,
+    :all_of,
+    :any_of,
     :items,
-    :oneOf,
+    :one_of,
     :properties,
     :title,
     :type,
-    :"x-struct"
+    :x_struct
   ]
 
-  @schema_fields Map.keys(Map.from_struct(%Schema{}))
-  @passthrough_opts @schema_fields -- (@derived_schema_fields ++ @jungle_spec_opts)
+  @passthrough_opts @option_names -- (@derived_schema_fields ++ @jungle_spec_opts)
   @object_opts @passthrough_opts ++ @jungle_spec_opts
   @property_opts @passthrough_opts ++ [:inline, :nullable, :required]
   @object_only_opts @object_opts -- @property_opts
@@ -227,10 +232,10 @@ defmodule JungleSpec do
 
   # Options that only make sense for a given kind of value. For a collection they describe its
   # items, which is why `{:array, type}` and `{:map, type}` also accept the ones valid for `type`.
-  @numeric_opts [:enum, :exclusiveMaximum, :exclusiveMinimum, :format, :maximum, :minimum, :multipleOf]
-  @string_opts [:enum, :format, :maxLength, :minLength, :pattern]
-  @array_opts [:maxItems, :minItems, :uniqueItems]
-  @map_opts [:maxProperties, :minProperties]
+  @numeric_opts [:enum, :exclusive_maximum, :exclusive_minimum, :format, :maximum, :minimum, :multiple_of]
+  @string_opts [:enum, :format, :max_length, :min_length, :pattern]
+  @array_opts [:max_items, :min_items, :unique_items]
+  @map_opts [:max_properties, :min_properties]
   @item_opts Enum.uniq(@numeric_opts ++ @string_opts)
   @type_scoped_opts Enum.uniq(@item_opts ++ @array_opts ++ @map_opts)
 
@@ -289,9 +294,9 @@ defmodule JungleSpec do
 
   Besides those, every field of `OpenApiSpex.Schema` that JungleSpec does not derive itself is
   copied into the object's schema, and any other key raises an `ArgumentError`. Options are
-  validated exactly as in `property/3`, against the object type: `:minProperties`, `:maxProperties`
-  and a map-valued `:default` are accepted, while `:enum` and the options describing a single
-  value, such as `:format` or `:minLength`, are rejected. See `property/3` for the full contract.
+  validated exactly as in `property/3`, against the object type: `:min_properties`,
+  `:max_properties` and a map-valued `:default` are accepted, while `:enum` and the options
+  describing a single value, such as `:format` or `:min_length`, are rejected. See `property/3` for the full contract.
   """
   defmacro open_api_object(title, opts, do: block) do
     quote do
@@ -414,6 +419,9 @@ defmodule JungleSpec do
 
   Property also has an optional keyword list of options.
 
+  Options are named the way Elixir names things and are translated to the camelCased field they
+  set, so the `minLength` field of `OpenApiSpex.Schema` is given as `min_length`.
+
   Options fall into three groups:
 
     * `:inline`, `:nullable` and `:required` are interpreted by JungleSpec itself:
@@ -430,38 +438,38 @@ defmodule JungleSpec do
     * every remaining field of `OpenApiSpex.Schema` is copied into the generated schema as it is
       given. That covers `:default`, `:description`, `:enum`, `:example`, `:format`, `:pattern`,
       the validation keywords listed below, and documentation keywords such as `:deprecated`,
-      `:readOnly`, `:writeOnly` and `:externalDocs`. A property typed by another module is the
+      `:read_only`, `:write_only` and `:external_docs`. A property typed by another module is the
       exception: it renders as a bare `$ref`, which has nowhere to carry them, so only `:nullable`
       and `:inline` take effect there
 
     * the fields JungleSpec derives from the type argument cannot be given: `:type`, `:title`,
-      `:properties`, `:items`, `:additionalProperties`, `:oneOf`, `:allOf`, `:anyOf` and
-      `:"x-struct"`
+      `:properties`, `:items`, `:additional_properties`, `:one_of`, `:all_of`, `:any_of` and
+      `:x_struct`
 
   Any other key raises an `ArgumentError` while the schema is being compiled.
 
   Some options only apply to certain types, and are rejected elsewhere:
 
-    * `:enum`, `:format`, `:minimum`, `:maximum`, `:exclusiveMinimum`, `:exclusiveMaximum` and
-      `:multipleOf` on `:integer` and `:number`. Note that `OpenApiSpex` does not enforce
-      `:multipleOf` for `:number`, so it reaches the document but is not checked while casting
+    * `:enum`, `:format`, `:minimum`, `:maximum`, `:exclusive_minimum`, `:exclusive_maximum` and
+      `:multiple_of` on `:integer` and `:number`. Note that `OpenApiSpex` does not enforce
+      `:multiple_of` for `:number`, so it reaches the document but is not checked while casting
 
-    * `:enum`, `:format`, `:minLength`, `:maxLength` and `:pattern` on `:string`
+    * `:enum`, `:format`, `:min_length`, `:max_length` and `:pattern` on `:string`
 
-    * `:minItems`, `:maxItems` and `:uniqueItems` on `{:array, type}`
+    * `:min_items`, `:max_items` and `:unique_items` on `{:array, type}`
 
-    * `:minProperties` and `:maxProperties` on `{:map, type}` and on objects
+    * `:min_properties` and `:max_properties` on `{:map, type}` and on objects
 
   The values of an `:enum` have to match the type it is given for, and so does a `:default`.
 
   An option describing a single value applies to the items of a collection, so `{:array, type}`
   and `{:map, type}` additionally accept whatever `type` accepts and hand it to the item schema:
 
-      property :ids, {:array, :string}, format: :uuid, minItems: 1
+      property :ids, {:array, :string}, format: :uuid, min_items: 1
 
-  puts `minItems` on the array and `format` on its items. Only options describing a single value
+  puts `min_items` on the array and `format` on its items. Only options describing a single value
   travel that way, so a collection nested in another collection cannot be constrained from the
-  outside: `{:array, {:map, :string}}` rejects `:minProperties`. A union has no single item to
+  outside: `{:array, {:map, :string}}` rejects `:min_properties`. A union has no single item to
   describe and rejects item options as well. Every other option describes the schema it is given
   for and is never passed down; `:inline` travels to the items too, since it decides how a
   module-typed item is rendered.
@@ -813,14 +821,16 @@ defmodule JungleSpec do
     schema_map
   end
 
-  defp maybe_add_opts(schema_map, keys, opts) do
-    Enum.reduce(keys, schema_map, fn key, map ->
-      if Keyword.has_key?(opts, key) do
-        Map.put(map, key, Keyword.get(opts, key))
-      else
-        map
-      end
-    end)
+  defp maybe_add_opts(schema_map, options, opts) do
+    Enum.reduce(options, schema_map, &put_given_option(&1, &2, opts))
+  end
+
+  defp put_given_option(option, schema_map, opts) do
+    if Keyword.has_key?(opts, option) do
+      Map.put(schema_map, Map.fetch!(@field_by_option, option), Keyword.get(opts, option))
+    else
+      schema_map
+    end
   end
 
   defp maybe_add_xstruct(schema, module, opts) do

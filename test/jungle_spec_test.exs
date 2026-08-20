@@ -111,6 +111,12 @@ defmodule JungleSpecTest do
                    &define_mismatched_enum_schema/0
     end
 
+    test "a camelCased option name is rejected and points at the Elixir one" do
+      assert_raise ArgumentError,
+                   ~r/:minLength is not a supported option for slug\. Did you mean :min_length\?/,
+                   &define_camel_case_option_schema/0
+    end
+
     test "an item option reaches the innermost schema of nested collections" do
       assert NestedJungle.schema().properties.grid.items.items.minLength == 2
     end
@@ -126,13 +132,13 @@ defmodule JungleSpecTest do
 
     test "a collection nested in a collection cannot be constrained from the outside" do
       assert_raise ArgumentError,
-                   ~r/:minProperties cannot be given as an option for buckets: it does not apply to type/,
+                   ~r/:min_properties cannot be given as an option for buckets: it does not apply to type/,
                    &define_nested_container_option_schema/0
     end
 
     test "an object level option that does not apply to objects raises" do
       assert_raise ArgumentError,
-                   ~r/:minLength cannot be given as an option for ObjectConstraint: it does not apply to type :object/,
+                   ~r/:min_length cannot be given as an option for ObjectConstraint: it does not apply to type :object/,
                    &define_object_constraint_schema/0
     end
 
@@ -178,7 +184,7 @@ defmodule JungleSpecTest do
       use JungleSpec
 
       open_api_object "NestedContainerOption" do
-        property :buckets, {:array, {:map, :string}}, minProperties: 1
+        property :buckets, {:array, {:map, :string}}, min_properties: 1
       end
     end
   end
@@ -203,6 +209,16 @@ defmodule JungleSpecTest do
     end
   end
 
+  defp define_camel_case_option_schema do
+    defmodule CamelCaseOption do
+      use JungleSpec
+
+      open_api_object "CamelCaseOption" do
+        property :slug, :string, minLength: 3
+      end
+    end
+  end
+
   defp define_object_enum_schema do
     defmodule ObjectEnum do
       use JungleSpec
@@ -215,7 +231,7 @@ defmodule JungleSpecTest do
     defmodule ObjectConstraint do
       use JungleSpec
 
-      open_api_object "ObjectConstraint", minLength: 3
+      open_api_object "ObjectConstraint", min_length: 3
     end
   end
 

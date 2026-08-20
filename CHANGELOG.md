@@ -12,6 +12,9 @@ previously accepted and silently discarded now raise an `ArgumentError`.
   rest) and the documentation keywords (`deprecated`, `readOnly`, `writeOnly`, `externalDocs`).
   Module-typed properties are the exception: a bare `$ref` has nowhere to put them, so only
   `:nullable` and `:inline` take effect there.
+* Options are named the way Elixir names things and are translated to the camelCased field they
+  set, so the `minLength` field of `OpenApiSpex.Schema` is given as `min_length` and `x-validate`
+  as `x_validate`. Only the snake_cased form is accepted.
 * Unknown options raise, with a suggestion of the closest supported option.
 * Options that JungleSpec sets itself (`type`, `items`, `oneOf`, `title` and friends) raise
   instead of being ignored.

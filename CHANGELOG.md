@@ -8,8 +8,9 @@ previously accepted and silently discarded now raise an `ArgumentError`.
 
 * The set of accepted options is derived from `OpenApiSpex.Schema` instead of a hardcoded list, so
   the schema fields JungleSpec does not set itself now reach the generated schema. That includes
-  the validation keywords (`minimum`, `maximum`, `minLength`, `minItems`, `uniqueItems` and the
-  rest) and the documentation keywords (`deprecated`, `readOnly`, `writeOnly`, `externalDocs`).
+  the validation keywords (`minimum`, `maximum`, `min_length`, `min_items`, `unique_items` and
+  the rest) and the documentation keywords (`deprecated`, `read_only`, `write_only`,
+  `external_docs`).
   Module-typed properties are the exception: a bare `$ref` has nowhere to put them, so only
   `:nullable` and `:inline` take effect there.
 * Options are named the way Elixir names things and are translated to the camelCased field they
@@ -22,8 +23,8 @@ previously accepted and silently discarded now raise an `ArgumentError`.
   `format` on a union.
 * Options describing a single value now apply to the items of a collection. `{:array, type}` and
   `{:map, type}` accept whatever `type` accepts and hand it to the item schema, so
-  `property :ids, {:array, :string}, format: :uuid, minItems: 1` puts `minItems` on the array and
-  `format` on its items. Every other option describes the schema it is given for: previously keys
+  `property :ids, {:array, :string}, format: :uuid, min_items: 1` puts `min_items` on the array
+  and `format` on its items. Every other option describes the schema it is given for: previously keys
   such as `example` ended up on the item schema instead of the container.
 * An `enum` is accepted for `:integer` and `:number` as well as `:string`; its values have to
   match the type they are given for. It used to be rejected for anything but `:string`.

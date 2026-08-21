@@ -195,17 +195,72 @@ defmodule JungleSpec do
         }
   """
 
+  alias JungleSpec.OptionName
   alias OpenApiSpex.Schema
+
+  # Options are named the way Elixir names things and translated to the camelCased schema field
+  # they set, so the `minLength` field of `OpenApiSpex.Schema` is given as `min_length`.
+  @field_by_option %Schema{}
+                   |> Map.from_struct()
+                   |> Map.keys()
+                   |> Map.new(fn schema_field -> {OptionName.to_option(schema_field), schema_field} end)
+  @option_names Map.keys(@field_by_option)
+
+  # Options interpreted by JungleSpec itself. They never reach the generated schema struct as
+  # given: `:extends` and `:struct?` shape the module, `:inline` picks reference vs inlining, and
+  # `:nullable`/`:required` are placed by each type clause.
+  @jungle_spec_opts [:extends, :inline, :nullable, :required, :struct?]
+
+  # Schema fields JungleSpec derives from the positional type argument. Accepting them as options
+  # would let a caller silently overwrite what the macro already decided.
+  @derived_schema_fields [
+    :additional_properties,
+    :all_of,
+    :any_of,
+    :items,
+    :one_of,
+    :properties,
+    :title,
+    :type,
+    :x_struct
+  ]
+
+  @passthrough_opts @option_names -- (@derived_schema_fields ++ @jungle_spec_opts)
+  @object_opts @passthrough_opts ++ @jungle_spec_opts
+  @property_opts @passthrough_opts ++ [:inline, :nullable, :required]
+  @object_only_opts @object_opts -- @property_opts
+
+  @numeric_types [:integer, :number]
+  @enum_types [:integer, :number, :string]
+
+  # Options that only make sense for a given kind of value. For a collection they describe its
+  # items, which is why `{:array, type}` and `{:map, type}` also accept the ones valid for `type`.
+  @numeric_opts [:enum, :exclusive_maximum, :exclusive_minimum, :format, :maximum, :minimum, :multiple_of]
+  @string_opts [:enum, :format, :max_length, :min_length, :pattern]
+  @array_opts [:max_items, :min_items, :unique_items]
+  @map_opts [:max_properties, :min_properties]
+  @item_opts Enum.uniq(@numeric_opts ++ @string_opts)
+  @type_scoped_opts Enum.uniq(@item_opts ++ @array_opts ++ @map_opts)
+
+  # An option describing the items is handed to the nested schema; everything else stays on the
+  # container. `:inline` travels too, as it decides how a module-typed item is rendered.
+  @nested_opts [:inline | @item_opts]
+  @container_opts @passthrough_opts -- @item_opts
+
+  @suggestion_threshold 0.8
 
   defmacro __using__(_) do
     quote do
       import JungleSpec,
         only: [
+          additional_properties: 1,
           additional_properties: 2,
           open_api_object: 1,
           open_api_object: 2,
           open_api_object: 3,
+          open_api_type: 2,
           open_api_type: 3,
+          property: 2,
           property: 3
         ]
     end
@@ -223,10 +278,6 @@ defmodule JungleSpec do
 
   Possible options
 
-    * `:description` - a binary describing the whole object
-
-    * `:example` - a map being an example of the object defined by the schema
-
     * `:extends` - a module of the schema that this schema extends. All properties of the extended
       schema will be added to the current schema, preserving the information if the properties are
       required. It does not propagate nullability of the extended schema. Ensure that
@@ -243,6 +294,12 @@ defmodule JungleSpec do
 
     * `:struct?` - a boolean value telling OpenApiSpex if it should create a struct out of the
       object. It will also add the struct to the typespec if set to `true`. By default it is `true`
+
+  Besides those, every field of `OpenApiSpex.Schema` that JungleSpec does not derive itself is
+  copied into the object's schema, and any other key raises an `ArgumentError`. Options are
+  validated exactly as in `property/3`, against the object type: `:min_properties`,
+  `:max_properties` and a map-valued `:default` are accepted, while `:enum` and the options
+  describing a single value, such as `:format` or `:min_length`, are rejected. See `property/3` for the full contract.
   """
   defmacro open_api_object(title, opts, do: block) do
     quote do
@@ -315,25 +372,8 @@ defmodule JungleSpec do
 
     * `module` - a module name that has it's own schema.
 
-  Supported options are:
-
-    * `:default` - default value for the property. It has to match type of the property.
-
-    * `:description` - a binary describing the property.
-
-    * `:enum` - a list of possible values which have to be binaries. Only valid for `:string` type.
-
-    * `:example` - an example of the property. It has to match its type.
-
-    * `:format` - an atom describing property's format.
-
-    * `:inline` - a boolean value that is used if the property's type is another module. Then,
-      if `inline: true`, the module's schema is just inlined. Otherwise, only the reference is
-      used. By default, the value is propagated from the object.
-
-    * `:nullable` - a boolean value specifying if the property can be `nil`. `false` by default.
-
-    * `:pattern` - a regular expression describing possible format of the property. Only valid for `:string` type.
+  The options are the ones accepted by `property/3`. `:extends` and `:struct?` are supported only
+  by `open_api_object/3` and raise here.
   """
   defmacro open_api_type(title, type, opts \\ []) do
     quote do
@@ -380,29 +420,62 @@ defmodule JungleSpec do
 
     * `module` - a module name that has it's own schema
 
-  Property also has an optional keyword list with the following possible options:
+  Property also has an optional keyword list of options.
 
-    * `:default` - default value for the property. It has to match type of the property
+  Options are named the way Elixir names things and are translated to the camelCased field they
+  set, so the `minLength` field of `OpenApiSpex.Schema` is given as `min_length`.
 
-    * `:description` - a binary describing the property
+  Options fall into three groups:
 
-    * `:enum` - a list of possible values which have to be binaries. Also, property has to have
-      `:string` type
+    * `:inline`, `:nullable` and `:required` are interpreted by JungleSpec itself:
 
-    * `:example` - an example of the property. It has to match its type
+      * `:inline` - a boolean value that is used if the type is another module. Then, if
+        `inline: true`, the module's schema is just inlined. Otherwise, only the reference is
+        used. By default, the value is propagated from the object
 
-    * `:format` - an atom describing property's format
+      * `:nullable` - a boolean value specifying if the value can be `nil`. `false` by default
 
-    * `:inline` - a boolean value that is used if the property's type is another module. Then,
-      if `inline: true`, the module's schema is just inlined. Otherwise, only the reference is
-      used. By default, the value is propagated from the object
+      * `:required` - a boolean value specifying if the property should be added to the list of
+        object's required properties. By default, it is propagated from the object
 
-    * `:nullable` - a boolean value specifying if the property can be `nil`. `false` by default
+    * every remaining field of `OpenApiSpex.Schema` is copied into the generated schema as it is
+      given. That covers `:default`, `:description`, `:enum`, `:example`, `:format`, `:pattern`,
+      the validation keywords listed below, and documentation keywords such as `:deprecated`,
+      `:read_only`, `:write_only` and `:external_docs`. A property typed by another module is the
+      exception: it renders as a bare `$ref`, which has nowhere to carry them, so only `:nullable`
+      and `:inline` take effect there
 
-    * `:pattern` - a regular expression describing possible format of the property
+    * the fields JungleSpec derives from the type argument cannot be given: `:type`, `:title`,
+      `:properties`, `:items`, `:additional_properties`, `:one_of`, `:all_of`, `:any_of` and
+      `:x_struct`
 
-    * `:required` - a boolean value specifying if the property should be added to the list of
-      object's required properties. By default, it is propagated from the object
+  Any other key raises an `ArgumentError` while the schema is being compiled.
+
+  Some options only apply to certain types, and are rejected elsewhere:
+
+    * `:enum`, `:format`, `:minimum`, `:maximum`, `:exclusive_minimum`, `:exclusive_maximum` and
+      `:multiple_of` on `:integer` and `:number`. Note that `OpenApiSpex` does not enforce
+      `:multiple_of` for `:number`, so it reaches the document but is not checked while casting
+
+    * `:enum`, `:format`, `:min_length`, `:max_length` and `:pattern` on `:string`
+
+    * `:min_items`, `:max_items` and `:unique_items` on `{:array, type}`
+
+    * `:min_properties` and `:max_properties` on `{:map, type}` and on objects
+
+  The values of an `:enum` have to match the type it is given for, and so does a `:default`.
+
+  An option describing a single value applies to the items of a collection, so `{:array, type}`
+  and `{:map, type}` additionally accept whatever `type` accepts and hand it to the item schema:
+
+      property :ids, {:array, :string}, format: :uuid, min_items: 1
+
+  puts `min_items` on the array and `format` on its items. Only options describing a single value
+  travel that way, so a collection nested in another collection cannot be constrained from the
+  outside: `{:array, {:map, :string}}` rejects `:min_properties`. A union has no single item to
+  describe and rejects item options as well. Every other option describes the schema it is given
+  for and is never passed down; `:inline` travels to the items too, since it decides how a
+  module-typed item is rendered.
   """
   defmacro property(name, type, opts \\ []) do
     quote do
@@ -415,7 +488,8 @@ defmodule JungleSpec do
 
     * `type` - type have to be one of the allowed types defined in the `property` macro
 
-  It has also one option:
+  It takes the same options as `property/3`, validated against the given type, so an unknown or
+  inapplicable key raises an `ArgumentError`. The most common one is:
 
     * `:nullable` - a boolean value specifying if the additional properties can be nullable.
     `false` by default
@@ -429,7 +503,7 @@ defmodule JungleSpec do
   def prepare_object_schema(module, title, properties, additional_properties, opts) do
     properties = propagate_general_opts(properties, opts)
 
-    validate_object_opts!(properties, additional_properties, opts)
+    validate_object_opts!(title, properties, additional_properties, opts)
 
     nullable = Keyword.get(opts, :nullable, false)
 
@@ -449,7 +523,7 @@ defmodule JungleSpec do
         type: :object
       }
       |> maybe_add_additional_properties(module, title, additional_properties)
-      |> maybe_add_opts([:description, :example], opts)
+      |> maybe_add_opts(@passthrough_opts, opts)
       |> maybe_add_xstruct(module, opts)
       |> maybe_extend_object(opts)
 
@@ -471,7 +545,12 @@ defmodule JungleSpec do
     end)
   end
 
-  defp validate_object_opts!(properties, additional_properties, object_opts) do
+  defp validate_object_opts!(title, properties, additional_properties, object_opts) do
+    validate_known_opts!(title, object_opts, @object_opts)
+    validate_type_scoped_opts!(title, :object, object_opts)
+    validate_enum!(title, :object, object_opts)
+    validate_default!(title, :object, object_opts)
+
     struct? = Keyword.get(object_opts, :struct?, true)
 
     if struct? and not is_nil(additional_properties) do
@@ -493,16 +572,12 @@ defmodule JungleSpec do
   defp prepare_property_schema(module, title, name, {:array, type}, opts) do
     validate_opts!(name, {:array, type}, opts)
 
-    items_schema = prepare_property_schema(module, title, name, type, clear_opts_for_nested_types(opts))
+    items_schema = prepare_property_schema(module, title, name, type, keep_opts_for_nested_types(opts))
 
     nullable = Keyword.get(opts, :nullable, false)
 
     schema_map =
-      maybe_add_opts(
-        %{type: :array, items: items_schema, nullable: nullable},
-        [:description, :default],
-        opts
-      )
+      maybe_add_opts(%{type: :array, items: items_schema, nullable: nullable}, @container_opts, opts)
 
     struct(Schema, schema_map)
   end
@@ -510,14 +585,14 @@ defmodule JungleSpec do
   defp prepare_property_schema(module, title, name, {:map, type}, opts) do
     validate_opts!(name, {:map, type}, opts)
 
-    nested_properties_schema = prepare_property_schema(module, title, name, type, clear_opts_for_nested_types(opts))
+    nested_properties_schema = prepare_property_schema(module, title, name, type, keep_opts_for_nested_types(opts))
 
     nullable = Keyword.get(opts, :nullable, false)
 
     schema_map =
       maybe_add_opts(
         %{type: :object, properties: %{}, additionalProperties: nested_properties_schema, nullable: nullable},
-        [:description, :default],
+        @container_opts,
         opts
       )
 
@@ -529,15 +604,11 @@ defmodule JungleSpec do
 
     items_schema =
       union_types
-      |> Enum.map(&prepare_property_schema(module, title, name, &1, clear_opts_for_nested_types(opts)))
+      |> Enum.map(&prepare_property_schema(module, title, name, &1, keep_opts_for_nested_types(opts)))
       |> Enum.uniq()
 
     schema_map =
-      maybe_add_opts(
-        %{oneOf: items_schema},
-        [:description, :default],
-        opts
-      )
+      maybe_add_opts(%{oneOf: items_schema}, @container_opts, opts)
 
     struct(Schema, schema_map)
   end
@@ -549,11 +620,7 @@ defmodule JungleSpec do
     nullable = Keyword.get(opts, :nullable, false)
 
     schema_map =
-      maybe_add_opts(
-        %{type: type, nullable: nullable},
-        [:description, :default, :format, :pattern, :example, :enum],
-        opts
-      )
+      maybe_add_opts(%{type: type, nullable: nullable}, @passthrough_opts, opts)
 
     struct(Schema, schema_map)
   end
@@ -594,18 +661,112 @@ defmodule JungleSpec do
   end
 
   defp validate_opts!(name, type, opts) do
-    if Keyword.has_key?(opts, :enum) do
-      if type != :string do
-        raise ArgumentError,
-              "#{name} has an enum option, but it can be provided only for string type"
-      end
+    validate_known_opts!(name, opts, @property_opts)
+    validate_type_scoped_opts!(name, type, opts)
+    validate_enum!(name, type, opts)
+    validate_default!(name, type, opts)
+  end
 
-      if opts |> Keyword.get(:enum) |> Enum.any?(fn item -> not is_binary(item) end) do
+  defp validate_known_opts!(name, opts, known_opts) do
+    Enum.each(opts, fn {key, _value} -> validate_option_key!(name, key, known_opts) end)
+  end
+
+  defp validate_option_key!(name, key, known_opts) do
+    cond do
+      key in known_opts ->
+        :ok
+
+      # The camelCased spelling is matched too, so that a schema field JungleSpec sets is reported
+      # as such however it was written.
+      key in @derived_schema_fields or OptionName.to_option(key) in @derived_schema_fields ->
         raise ArgumentError,
-              "#{name} has values of invalid types in the enum option. They should be binaries"
-      end
+              "#{inspect(key)} cannot be given as an option for #{name}: JungleSpec sets it itself"
+
+      key in @object_only_opts ->
+        raise ArgumentError,
+              "#{inspect(key)} cannot be given as an option for #{name}: it is only supported by open_api_object"
+
+      true ->
+        raise ArgumentError, describe_unknown_option(name, key, known_opts)
     end
+  end
 
+  defp describe_unknown_option(name, key, known_opts) do
+    message = "#{inspect(key)} is not a supported option for #{name}"
+
+    case find_closest_option(key, known_opts) do
+      nil -> message
+      closest -> message <> ". Did you mean #{inspect(closest)}?"
+    end
+  end
+
+  defp find_closest_option(key, known_opts) do
+    key_string = Atom.to_string(key)
+    scored_options = Enum.map(known_opts, &score_option(&1, key_string))
+    matches = Enum.filter(scored_options, fn {_option, distance} -> distance >= @suggestion_threshold end)
+
+    pick_closest_option(matches)
+  end
+
+  defp score_option(option, key_string) do
+    distance = String.jaro_distance(key_string, Atom.to_string(option))
+
+    {option, distance}
+  end
+
+  defp pick_closest_option([]), do: nil
+
+  defp pick_closest_option(matches) do
+    {option, _distance} = Enum.max_by(matches, fn {_option, distance} -> distance end)
+    option
+  end
+
+  defp validate_type_scoped_opts!(name, type, opts) do
+    allowed = list_allowed_opts(type)
+
+    Enum.each(opts, fn {key, _value} -> validate_type_scoped_opt!(name, type, key, allowed) end)
+  end
+
+  defp validate_type_scoped_opt!(_name, _type, key, _allowed) when key not in @type_scoped_opts, do: :ok
+
+  defp validate_type_scoped_opt!(name, type, key, allowed) do
+    if key not in allowed do
+      raise ArgumentError,
+            "#{inspect(key)} cannot be given as an option for #{name}: it does not apply to type #{inspect(type)}"
+    end
+  end
+
+  defp list_allowed_opts(type) when type in @numeric_types, do: @numeric_opts
+  defp list_allowed_opts(:string), do: @string_opts
+  defp list_allowed_opts(:object), do: @map_opts
+  defp list_allowed_opts({:array, item_type}), do: @array_opts ++ list_item_opts(item_type)
+  defp list_allowed_opts({:map, value_type}), do: @map_opts ++ list_item_opts(value_type)
+  defp list_allowed_opts(_type), do: []
+
+  # Only the options describing a single value travel to the items, so only those may be given for
+  # a collection. A collection nested in a collection cannot be constrained from the outside.
+  defp list_item_opts(type) do
+    Enum.filter(list_allowed_opts(type), &(&1 in @item_opts))
+  end
+
+  # Which types accept an enum at all is decided by `list_allowed_opts/1`; for a collection the
+  # nested schema validates the values against the item type.
+  defp validate_enum!(name, type, opts) when type in @enum_types do
+    if Keyword.has_key?(opts, :enum) do
+      values = Keyword.get(opts, :enum)
+      validate_enum_values!(name, type, values)
+    end
+  end
+
+  defp validate_enum!(_name, _type, _opts), do: :ok
+
+  defp validate_enum_values!(name, type, values) do
+    if Enum.any?(values, &(not has_valid_type?(&1, type))) do
+      raise ArgumentError, "the enum values of #{name} do not all match its type #{inspect(type)}"
+    end
+  end
+
+  defp validate_default!(name, type, opts) do
     if Keyword.has_key?(opts, :default) do
       if not (opts |> Keyword.get(:default) |> has_valid_type?(type)) do
         raise ArgumentError, "default value of #{name} does not match its type"
@@ -641,12 +802,12 @@ defmodule JungleSpec do
     Enum.all?(default, fn {key, value} -> is_binary(key) and has_valid_type?(value, expected_type) end)
   end
 
+  defp has_valid_type?(default, :object) when is_map(default), do: true
+
   defp has_valid_type?(_default, _expected_type), do: false
 
-  defp clear_opts_for_nested_types(opts) do
-    Enum.reduce([:nullable, :default, :description, :enum], opts, fn key, opts ->
-      Keyword.delete(opts, key)
-    end)
+  defp keep_opts_for_nested_types(opts) do
+    Keyword.take(opts, @nested_opts)
   end
 
   defp required_properties_names(properties) do
@@ -666,14 +827,19 @@ defmodule JungleSpec do
     schema_map
   end
 
-  defp maybe_add_opts(schema_map, keys, opts) do
-    Enum.reduce(keys, schema_map, fn key, map ->
-      if Keyword.has_key?(opts, key) do
-        Map.put(map, key, Keyword.get(opts, key))
-      else
-        map
-      end
-    end)
+  defp maybe_add_opts(schema_map, options, opts) do
+    Enum.reduce(options, schema_map, &put_given_option(&1, &2, opts))
+  end
+
+  defp put_given_option(option, schema_map, opts) do
+    if Keyword.has_key?(opts, option) do
+      schema_field = Map.fetch!(@field_by_option, option)
+      value = Keyword.get(opts, option)
+
+      Map.put(schema_map, schema_field, value)
+    else
+      schema_map
+    end
   end
 
   defp maybe_add_xstruct(schema, module, opts) do

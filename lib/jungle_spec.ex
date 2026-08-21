@@ -200,7 +200,7 @@ defmodule JungleSpec do
 
   # Options are named the way Elixir names things and translated to the camelCased schema field
   # they set, so the `minLength` field of `OpenApiSpex.Schema` is given as `min_length`.
-  @field_by_option Map.new(Map.keys(Map.from_struct(%Schema{})), &{OptionName.to_option(&1), &1})
+  @field_by_option %Schema{} |> Map.from_struct() |> Map.keys() |> Map.new(&{OptionName.to_option(&1), &1})
   @option_names Map.keys(@field_by_option)
 
   # Options interpreted by JungleSpec itself. They never reach the generated schema struct as
@@ -829,7 +829,10 @@ defmodule JungleSpec do
 
   defp put_given_option(option, schema_map, opts) do
     if Keyword.has_key?(opts, option) do
-      Map.put(schema_map, Map.fetch!(@field_by_option, option), Keyword.get(opts, option))
+      schema_field = Map.fetch!(@field_by_option, option)
+      value = Keyword.get(opts, option)
+
+      Map.put(schema_map, schema_field, value)
     else
       schema_map
     end

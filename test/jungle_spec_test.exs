@@ -101,8 +101,12 @@ defmodule JungleSpecTest do
                    &define_object_enum_schema/0
     end
 
-    test "an enum is accepted for any scalar type, not only strings" do
-      assert ConstrainedJungle.schema().properties.rank.enum == [1, 2, 3]
+    test "an enum is accepted for every scalar type" do
+      properties = ConstrainedJungle.schema().properties
+
+      assert properties.rank.enum == [1, 2, 3]
+      assert properties.score.enum == [1.5, 2.5]
+      assert properties.kind.enum == ["first", "second"]
     end
 
     test "enum values have to match the type they are given for" do

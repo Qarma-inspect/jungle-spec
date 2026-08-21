@@ -16,8 +16,10 @@ defmodule JungleSpec.OptionName do
   """
   @spec to_option(atom()) :: atom()
   def to_option(schema_field) do
-    underscored = schema_field |> Atom.to_string() |> Macro.underscore()
-
-    underscored |> String.replace("-", "_") |> String.to_atom()
+    schema_field
+    |> Atom.to_string()
+    |> Macro.underscore()
+    |> String.replace("-", "_")
+    |> String.to_atom()
   end
 end

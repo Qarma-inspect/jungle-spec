@@ -203,7 +203,7 @@ defmodule JungleSpec do
   @field_by_option %Schema{}
                    |> Map.from_struct()
                    |> Map.keys()
-                   |> Map.new(&{OptionName.to_option(&1), &1})
+                   |> Map.new(fn schema_field -> {OptionName.to_option(schema_field), schema_field} end)
   @option_names Map.keys(@field_by_option)
 
   # Options interpreted by JungleSpec itself. They never reach the generated schema struct as
@@ -710,6 +710,7 @@ defmodule JungleSpec do
 
   defp score_option(option, key_string) do
     distance = String.jaro_distance(key_string, Atom.to_string(option))
+
     {option, distance}
   end
 

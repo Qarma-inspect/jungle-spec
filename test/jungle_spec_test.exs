@@ -162,13 +162,17 @@ defmodule JungleSpecTest do
   end
 
   defp list_schema_fields do
-    Map.keys(Map.from_struct(%OpenApiSpex.Schema{}))
+    %OpenApiSpex.Schema{}
+    |> Map.from_struct()
+    |> Map.keys()
   end
 
   # Decided from the spelling alone, so that a regression in the translation removes coverage from
   # nothing and instead makes the assertion below fail.
   defp camel_cased?(schema_field) do
-    String.match?(Atom.to_string(schema_field), ~r/[A-Z-]/)
+    schema_field
+    |> Atom.to_string()
+    |> String.match?(~r/[A-Z-]/)
   end
 
   defp helpful_rejection?(schema_field) do
